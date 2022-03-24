@@ -3,10 +3,12 @@ import numpy as np
 from numpy.linalg import inv, det, slogdet
 from utils import *
 
+
 class UnivariateGaussian:
     """
     Class for univariate Gaussian Distribution Estimator
     """
+
     def __init__(self, biased_var: bool = False) -> UnivariateGaussian:
         """
         Estimator for univariate Gaussian mean and variance parameters
@@ -51,13 +53,12 @@ class UnivariateGaussian:
         Sets `self.mu_`, `self.var_` attributes according to calculated estimation (where
         estimator is either biased or unbiased). Then sets `self.fitted_` attribute to `True`
         """
-        self.mu_ = np.mean(X) + self.biased_
+        self.mu_ = np.mean(X) + self.biased_  # if biased- add one to result, otherwise - sample mean.
 
-        self.var_ = X.var(ddof=not self.biased_)
-
-        # raise NotImplementedError()
+        self.var_ = X.var(ddof=not self.biased_)  # if biased- ddof=0 (divide by m)
 
         self.fitted_ = True
+
         return self
 
     def pdf(self, X: np.ndarray) -> np.ndarray:
@@ -80,13 +81,8 @@ class UnivariateGaussian:
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
-        # raise NotImplementedError()
-        return UnivariateGaussian.pdf_calc(X, self.mu_, self.var_)
-
-    @staticmethod
-    def pdf_calc(X: np.ndarray, mu: float, var: float) -> np.ndarray:
-        sigma = np.sqrt(var)
-        return 1/(sigma * np.sqrt(2 * np.pi)) * np.exp(- (X - mu)**2 / (2 * sigma**2))
+        sigma = np.sqrt(self.var_)
+        return 1 / (sigma * np.sqrt(2 * np.pi)) * np.exp(- (X - self.mu_) ** 2 / (2 * sigma ** 2))
 
     @staticmethod
     def log_likelihood(mu: float, sigma: float, X: np.ndarray) -> float:
@@ -107,14 +103,15 @@ class UnivariateGaussian:
         log_likelihood: float
             log-likelihood calculated
         """
-        # raise NotImplementedError()
-        return np.log(np.prod(UnivariateGaussian.pdf_calc(X, mu, sigma**2)))
+
+        return -0.5 * X.shape[0] * np.log(2 * np.pi * sigma) - 1 / 2 * sigma * np.sum(np.power((X - mu), 2))
 
 
 class MultivariateGaussian:
     """
     Class for multivariate Gaussian Distribution Estimator
     """
+
     def __init__(self):
         """
         Initialize an instance of multivariate Gaussian estimator
@@ -154,12 +151,14 @@ class MultivariateGaussian:
         Sets `self.mu_`, `self.cov_` attributes according to calculated estimation.
         Then sets `self.fitted_` attribute to `True`
         """
-        raise NotImplementedError()
+
+        self.mu_ = np.mean(a=X, axis=0)
+        self.cov_ = np.cov(m=X, rowvar=False)
 
         self.fitted_ = True
         return self
 
-    def pdf(self, X: np.ndarray):
+    def pdf(self, X: np.ndarray) -> np.ndarray:
         """
         Calculate PDF of observations under Gaussian model with fitted estimators
 
@@ -179,7 +178,9 @@ class MultivariateGaussian:
         """
         if not self.fitted_:
             raise ValueError("Estimator must first be fitted before calling `pdf` function")
-        raise NotImplementedError()
+        d_features = X.shape[1]
+        return (1 / np.sqrt(np.power(2 * np.pi, d_features) * det(self.cov_))) * \
+               np.exp(-0.5 * np.sum(((X - self.mu_) @ inv(self.cov_) * (X - self.mu_)), axis=1))
 
     @staticmethod
     def log_likelihood(mu: np.ndarray, cov: np.ndarray, X: np.ndarray) -> float:
@@ -200,33 +201,9 @@ class MultivariateGaussian:
         log_likelihood: float
             log-likelihood calculated over all input data and under given parameters of Gaussian
         """
-        raise NotImplementedError()
+        m_samples = X.shape[0]
+        d_features = X.shape[1]
+        logdet = slogdet(cov)
+        return -0.5 * (m_samples * (d_features * np.log(2 * np.pi) + logdet[0]*logdet[1]) +
+                       np.sum((X - mu) @ inv(cov) * (X - mu)))
 
-
-if __name__ == '__main__':
-    mu, sigma = 10, 1
-    univariate_gaussian = UnivariateGaussian()
-    samples = np.random.normal(mu, sigma, 1000)
-    univariate_gaussian.fit(samples)
-    print("(", univariate_gaussian.mu_, ", ", univariate_gaussian.var_, " )")
-    sample_sizes = np.arange(10, 1001, 10)
-    distance_from_mu = []
-    for size in sample_sizes:
-        univariate_gaussian.fit(samples[:size])
-        distance_from_mu.append(abs(univariate_gaussian.mu_ - mu))
-
-    go.Figure([go.Scatter(x=sample_sizes, y=distance_from_mu, mode='markers+lines', name=r'$\widehat\mu$')],
-              layout=go.Layout(title=r"$\text{Absolute Distance Between The Estimated- And True Value Of The"
-                                     r" Expectation, As Function Of Number Of Samples}$",
-                               xaxis_title="$m\\text{ - number of samples}$",
-                               yaxis_title="$d\\text{ - distance from mu}$",
-                               height=300)).show()
-
-    univariate_gaussian.fit(samples)
-    pdf_values = univariate_gaussian.pdf(samples)
-
-    go.Figure([go.Scatter(x=samples, y=pdf_values, mode='markers', name=r'$\widehat\mu$')],
-              layout=go.Layout(title=r"$\text{Probability Density Function Of Sample Values}$",
-                               xaxis_title="$m\\text{ - sample values}$",
-                               yaxis_title="$d\\text{ - pdf}$",
-                               height=300)).show()
