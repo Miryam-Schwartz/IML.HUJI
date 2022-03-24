@@ -12,7 +12,7 @@ def test_univariate_gaussian():
     samples = np.random.normal(mu, sigma, 1000)
     univariate_gaussian = UnivariateGaussian()
     univariate_gaussian.fit(samples)
-    print("(", univariate_gaussian.mu_, ", ", univariate_gaussian.var_, " )")
+    print("(mu, var) = (", univariate_gaussian.mu_, ", ", univariate_gaussian.var_, ")")
 
     # Question 2 - Empirically showing sample mean is consistent
     sample_sizes = np.arange(10, 1001, 10)
@@ -49,8 +49,8 @@ def test_multivariate_gaussian():
     samples = np.random.multivariate_normal(mu, sigma, 1000)
     multivariate_gaussian = MultivariateGaussian()
     multivariate_gaussian.fit(samples)
-    print(multivariate_gaussian.mu_)
-    print(multivariate_gaussian.cov_)
+    print("Estimated Expectation Vector is: ", multivariate_gaussian.mu_)
+    print("Estimated Covariance Matrix is: \n", multivariate_gaussian.cov_)
 
     # Question 5 - Likelihood evaluation
     f = np.linspace(-10, 10, 200)
@@ -66,7 +66,9 @@ def test_multivariate_gaussian():
                         yaxis_title="$f1\\text{ - Estimated Expectation at 1-st Coordinate}$")).show()
 
     # Question 6 - Maximum likelihood
-    # (f1, f3) = (0,4) got the Maximum likelihood
+    print("The model that achieved Maximum likelihood is: (f1, f3) = (",
+          f[np.argmax(log_like_matrix, axis=0)][0], ", ", f[np.argmax(log_like_matrix, axis=1)][0],
+          ")\nMaximum likelihood is: ", np.amax(log_like_matrix))
 
 
 if __name__ == '__main__':
