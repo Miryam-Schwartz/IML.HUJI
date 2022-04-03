@@ -1,6 +1,8 @@
-from __future__ import annotations
+import sys
+sys.path.append("G:\האחסון שלי\year2\semesterB\iml\IML.HUJI")
 from typing import NoReturn
 from IMLearn.base import BaseEstimator
+from sklearn import svm
 import numpy as np
 
 
@@ -9,7 +11,7 @@ class AgodaCancellationEstimator(BaseEstimator):
     An estimator for solving the Agoda Cancellation challenge
     """
 
-    def __init__(self) -> AgodaCancellationEstimator:
+    def __init__(self):
         """
         Instantiate an estimator for solving the Agoda Cancellation challenge
 
@@ -22,6 +24,7 @@ class AgodaCancellationEstimator(BaseEstimator):
 
         """
         super().__init__()
+        self.clf = svm.SVC()
 
     def _fit(self, X: np.ndarray, y: np.ndarray) -> NoReturn:
         """
@@ -39,7 +42,7 @@ class AgodaCancellationEstimator(BaseEstimator):
         -----
 
         """
-        pass
+        self.clf.fit(X, y)
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -55,7 +58,7 @@ class AgodaCancellationEstimator(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        return np.zeros(X.shape[0])
+        return self.clf.predict(X)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
