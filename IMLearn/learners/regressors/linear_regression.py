@@ -91,9 +91,3 @@ class LinearRegression(BaseEstimator):
         """
         return mean_square_error(y, self._predict(X))
 
-
-if __name__ == '__main__':
-    X = np.random.rand(3,2)
-    print(X)
-    X = np.insert(X, 0, 1, axis=1)
-    print(X)
