@@ -85,7 +85,7 @@ if __name__ == '__main__':
     x, y = load_data("C:\\Users\\Miryam\\Documents\\IML.HUJI\\datasets\\house_prices.csv")
 
     # Question 2 - Feature evaluation with respect to response
-    ##feature_evaluation(x, y, "C:\\Users\\Miryam\\Documents\\IML.HUJI\\exercises\\pearson_correlations\\{}.png")
+    feature_evaluation(x, y, "C:\\Users\\Miryam\\Documents\\IML.HUJI\\exercises\\pearson_correlations\\{}.png")
 
     # Question 3 - Split samples into training- and testing sets.
     train_x, train_y, test_x, test_y = split_train_test(x, y)
