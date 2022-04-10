@@ -73,7 +73,19 @@ class Perceptron(BaseEstimator):
         -----
         Fits model with or without an intercept depending on value of `self.fit_intercept_`
         """
-        raise NotImplementedError()
+        if self.include_intercept_:
+            X = np.insert(X, 0, 1, axis=1)
+        self.coefs_ = np.zeros(X.shape[1])
+        for _ in range(self.max_iter_):
+            is_exist = False
+            for i in range(X.shape[0]):
+                if (np.inner(X[i], self.coefs_) * y[i]) <= 0:
+                    self.coefs_ += y[i] * X[i]
+                    is_exist = True
+                    break
+            self.callback_(self, X, 0)
+            if not is_exist:
+                break
 
     def _predict(self, X: np.ndarray) -> np.ndarray:
         """
@@ -89,7 +101,9 @@ class Perceptron(BaseEstimator):
         responses : ndarray of shape (n_samples, )
             Predicted responses of given samples
         """
-        raise NotImplementedError()
+        if self.include_intercept_:
+            X = np.insert(X, 0, 1, axis=1)
+        return np.sign(X @ self.coefs_)
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
         """
@@ -109,4 +123,4 @@ class Perceptron(BaseEstimator):
             Performance under missclassification loss function
         """
         from ...metrics import misclassification_error
-        raise NotImplementedError()
+        return misclassification_error(y, self._predict(X))
