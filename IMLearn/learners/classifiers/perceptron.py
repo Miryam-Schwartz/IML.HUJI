@@ -82,8 +82,8 @@ class Perceptron(BaseEstimator):
                 if (np.inner(X[i], self.coefs_) * y[i]) <= 0:
                     self.coefs_ += y[i] * X[i]
                     is_exist = True
+                    self.callback_(self, X[i], y[i])
                     break
-            self.callback_(self, X, 0)
             if not is_exist:
                 break
 
