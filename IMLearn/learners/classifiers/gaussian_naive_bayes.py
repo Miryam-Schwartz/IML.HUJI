@@ -96,7 +96,7 @@ class GaussianNaiveBayes(BaseEstimator):
             cov = np.diag(self.vars_[i])
             mult = np.sum(((X - self.mu_[i]) @ inv(cov) * (X - self.mu_[i])), axis=1)
             output[:, i] = (1 / np.sqrt(np.power(2 * np.pi, d_features) * det(cov))) * \
-                           np.exp(-0.5 * mult)
+                           np.exp(-0.5 * mult) * self.pi_[i]
         return output
 
     def _loss(self, X: np.ndarray, y: np.ndarray) -> float:
