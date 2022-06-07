@@ -37,4 +37,17 @@ def cross_validate(estimator: BaseEstimator, X: np.ndarray, y: np.ndarray,
     validation_score: float
         Average validation score over folds
     """
-    raise NotImplementedError()
+    m_samples = y.shape[0]
+    leng_of_part = m_samples // cv
+    sum_error_validate = 0
+    sum_error_train = 0
+    for i in range(cv):
+        indexes_to_delete = list(range(i * leng_of_part, (i + 1) * leng_of_part))
+        X_temp, y_temp = np.delete(arr=X, obj=indexes_to_delete, axis=0), \
+                         np.delete(y, indexes_to_delete, axis=0)
+        estimator.fit(X_temp, y_temp)
+        predicted_validate = estimator.predict(X[indexes_to_delete])
+        predicted_train = estimator.predict(X_temp)
+        sum_error_validate += scoring(y[indexes_to_delete], predicted_validate)
+        sum_error_train += scoring(y_temp, predicted_train)
+    return sum_error_train / cv, sum_error_validate / cv
