@@ -2,6 +2,8 @@ import numpy as np
 import pandas as pd
 from typing import Tuple, List, Callable, Type
 
+import plotly
+
 from IMLearn import BaseModule
 from IMLearn.desent_methods import GradientDescent, FixedLR, ExponentialLR
 from IMLearn.desent_methods.modules import L1, L2
@@ -46,12 +48,14 @@ def plot_descent_path(module: Type[BaseModule],
     fig = plot_descent_path(IMLearn.desent_methods.modules.L1, np.ndarray([[1,1],[0,0]]))
     fig.show()
     """
+
     def predict_(w):
         return np.array([module(weights=wi).compute_output() for wi in w])
 
     from utils import decision_surface
     return go.Figure([decision_surface(predict_, xrange=xrange, yrange=yrange, density=70, showscale=False),
-                      go.Scatter(x=descent_path[:, 0], y=descent_path[:, 1], mode="markers+lines", marker_color="black")],
+                      go.Scatter(x=descent_path[:, 0], y=descent_path[:, 1], mode="markers+lines",
+                                 marker_color="black")],
                      layout=go.Layout(xaxis=dict(range=xrange),
                                       yaxis=dict(range=yrange),
                                       title=f"GD Descent Path {title}"))
@@ -73,26 +77,83 @@ def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarra
     weights: List[np.ndarray]
         Recorded parameters
     """
-    raise NotImplementedError()
+    # values = np.ndarray([])
+    # weights_list = np.ndarray([])
+
+    values = []
+    weights_list = []
+
+    def helper(solver: GradientDescent, weights: np.ndarray, val: np.ndarray, grad: np.ndarray, t: int, eta: float,
+               delta: float):
+        values.append(val)
+        weights_list.append(weights)
+
+    return helper, values, weights_list
 
 
 def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
                                  etas: Tuple[float] = (1, .1, .01, .001)):
-    raise NotImplementedError()
+    for eta in etas:
+        fixed_lr = FixedLR(eta)
+        callback1, values1, weights1 = get_gd_state_recorder_callback()
+        solver1 = GradientDescent(fixed_lr, callback=callback1)
+        solver1.fit(L1(init), np.ndarray([]), np.ndarray([]))
+        plot_descent_path(L1, np.concatenate(weights1, axis=0).reshape(len(weights1), len(init)),
+                          f"Descent trajectory, L1, eta = {eta}").show()
+
+        callback2, values2, weights2 = get_gd_state_recorder_callback()
+        solver2 = GradientDescent(fixed_lr, callback=callback2)
+        solver2.fit(L2(init), np.ndarray([]), np.ndarray([]))
+        plot_descent_path(L2, np.concatenate(weights2, axis=0).reshape(len(weights2), len(init)),
+                          f"Descent trajectory, L2, eta = {eta}").show()
+
+        axis_x = list(range(len(weights1)))
+
+        go.Figure(go.Scatter(x=axis_x, y=values1, mode='markers', name=f'Convergence Rate L1. eta = {eta}')) \
+            .update_layout(title=f'Convergence Rate L1. eta = {eta}').show()
+
+        axis_x = list(range(len(weights2)))
+
+        go.Figure(go.Scatter(x=axis_x, y=values2, mode='markers', name=f'Convergence Rate L2. eta = {eta}')) \
+            .update_layout(title=f'Convergence Rate L2. eta = {eta}').show()
 
 
 def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.e / 3]),
                                     eta: float = .1,
                                     gammas: Tuple[float] = (.9, .95, .99, 1)):
     # Optimize the L1 objective using different decay-rate values of the exponentially decaying learning rate
-    raise NotImplementedError()
+    fig = plotly.subplots.make_subplots(rows=2, cols=2)
+    l1 = L1(init)
+    for i, gamma in enumerate(gammas):
+        exp_lr = ExponentialLR(base_lr=eta, decay_rate=gamma)
+        callback, values, weights = get_gd_state_recorder_callback()
+        solver = GradientDescent(learning_rate=exp_lr, callback=callback)
+        solver.fit(l1, X=None, y=None)
+
+        fig.add_trace(go.Scatter(x=list(range(len(values))), y=values, mode='markers', name=f'decay rate: {gamma}'),
+                      row=i % 2 + 1, col=i // 2 + 1)
+
+    fig.update_layout(title=f'Convergence Rate for L1, with different exponentially decaying learning rates')
 
     # Plot algorithm's convergence for the different values of gamma
-    raise NotImplementedError()
+    fig.show()
 
     # Plot descent path for gamma=0.95
-    raise NotImplementedError()
+    exp_lr = ExponentialLR(base_lr=eta, decay_rate=0.95)
+    callback1, values1, weights1 = get_gd_state_recorder_callback()
+    solver1 = GradientDescent(exp_lr, callback=callback1)
+    solver1.fit(L1(init), np.ndarray([]), np.ndarray([]))
+    print(weights1)
+    plot_descent_path(L1, np.concatenate(weights1, axis=0).reshape(len(weights1), len(init)),
+                      f"Descent trajectory for L1, with eta = {eta}, decay rate = 0.95").show()
 
+    exp_lr = ExponentialLR(base_lr=eta, decay_rate=0.95)
+    callback2, values2, weights2 = get_gd_state_recorder_callback()
+    solver2 = GradientDescent(exp_lr, callback=callback2)
+    solver2.fit(L2(init), np.ndarray([]), np.ndarray([]))
+    print(weights2)
+    plot_descent_path(L2, np.concatenate(weights2, axis=0).reshape(len(weights2), len(init)),
+                      f"Descent trajectory for L1, with eta = {eta}, decay rate = 0.95").show()
 
 def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8) -> \
         Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
@@ -126,6 +187,7 @@ def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8)
     return split_train_test(df.drop(['chd', 'row.names'], axis=1), df.chd, train_portion)
 
 
+
 def fit_logistic_regression():
     # Load and split SA Heard Disease dataset
     X_train, y_train, X_test, y_test = load_data()
@@ -140,6 +202,6 @@ def fit_logistic_regression():
 
 if __name__ == '__main__':
     np.random.seed(0)
-    compare_fixed_learning_rates()
+    #    compare_fixed_learning_rates()
     compare_exponential_decay_rates()
     fit_logistic_regression()

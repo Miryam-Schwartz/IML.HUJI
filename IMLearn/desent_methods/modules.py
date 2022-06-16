@@ -33,7 +33,9 @@ class L2(BaseModule):
         output: ndarray of shape (1,)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        if self.weights is None:
+            return None  # todo check what to do
+        return np.inner(self.weights, self.weights)
 
     def compute_jacobian(self, **kwargs) -> np.ndarray:
         """
@@ -49,7 +51,7 @@ class L2(BaseModule):
         output: ndarray of shape (n_in,)
             L2 derivative with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+        return 2*self.weights
 
 
 class L1(BaseModule):
@@ -78,7 +80,9 @@ class L1(BaseModule):
         output: ndarray of shape (1,)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        if self.weights is None:
+            return None
+        return np.linalg.norm(self.weights, ord=1)
 
     def compute_jacobian(self, **kwargs) -> np.ndarray:
         """
@@ -94,7 +98,7 @@ class L1(BaseModule):
         output: ndarray of shape (n_in,)
             L1 derivative with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+        return np.sign(self.weights)
 
 
 class LogisticModule(BaseModule):
@@ -131,7 +135,9 @@ class LogisticModule(BaseModule):
         output: ndarray of shape (1,)
             Value of function at point self.weights
         """
-        raise NotImplementedError()
+        # - (1 / m) * np.sum[y * < x_i, w > - log(sigmoid( < x_i, w >))]
+        m_samples = X.shape[0]
+        return (-1/m_samples) * np.sum(y*(X@self.weights) - np.log(1/(1 + np.exp(-X@self.weights))))  # todo return ndarray?
 
     def compute_jacobian(self, X: np.ndarray, y: np.ndarray, **kwargs) -> np.ndarray:
         """
@@ -150,7 +156,14 @@ class LogisticModule(BaseModule):
         output: ndarray of shape (n_features,)
             Derivative of function with respect to self.weights at point self.weights
         """
-        raise NotImplementedError()
+        m_samples = X.shape[0]
+        d_features = X.shape[1]
+        out = np.zeros(d_features)
+        for j in range(d_features):
+            out[j] = -(1/m_samples) * np.sum(y*X[:, j] - X[:, j]*np.exp(-X@self.weights) * (1/(1+np.exp(-X@self.weights))))
+        return out
+
+        # return (-1/m_samples) * np.sum(X*np.transpose(np.array([y])) - (np.exp(-X@self.weights)/(1 + np.exp(-X@self.weights))))
 
 
 class RegularizedModule(BaseModule):
@@ -250,3 +263,13 @@ class RegularizedModule(BaseModule):
             Weights to set for module
         """
         raise NotImplementedError()
+
+
+# if __name__ == '__main__':
+#     X = np.array([[1,1],[1,1]])
+#     y = np.array([[2,3]])
+#     # y = np.transpose(y)
+#     print(X)
+#     print(y)
+#     print(y*X)
+#     print(X*y)
