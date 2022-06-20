@@ -3,11 +3,15 @@ import pandas as pd
 from typing import Tuple, List, Callable, Type
 
 import plotly
+import sklearn
+from sklearn.metrics import auc
 
 from IMLearn import BaseModule
 from IMLearn.desent_methods import GradientDescent, FixedLR, ExponentialLR
 from IMLearn.desent_methods.modules import L1, L2
 from IMLearn.learners.classifiers.logistic_regression import LogisticRegression
+from IMLearn.metrics import misclassification_error
+from IMLearn.model_selection import cross_validate
 from IMLearn.utils import split_train_test
 
 import plotly.graph_objects as go
@@ -77,9 +81,6 @@ def get_gd_state_recorder_callback() -> Tuple[Callable[[], None], List[np.ndarra
     weights: List[np.ndarray]
         Recorded parameters
     """
-    # values = np.ndarray([])
-    # weights_list = np.ndarray([])
-
     values = []
     weights_list = []
 
@@ -103,7 +104,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
 
         callback2, values2, weights2 = get_gd_state_recorder_callback()
         solver2 = GradientDescent(fixed_lr, callback=callback2)
-        solver2.fit(L2(init), np.ndarray([]), np.ndarray([]))
+        solver2.fit(L2(init), X=None, y=None)
         plot_descent_path(L2, np.concatenate(weights2, axis=0).reshape(len(weights2), len(init)),
                           f"Descent trajectory, L2, eta = {eta}").show()
 
@@ -128,7 +129,7 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
         exp_lr = ExponentialLR(base_lr=eta, decay_rate=gamma)
         callback, values, weights = get_gd_state_recorder_callback()
         solver = GradientDescent(learning_rate=exp_lr, callback=callback)
-        solver.fit(l1, X=None, y=None)
+        solver.fit(f=l1, X=None, y=None)
 
         fig.add_trace(go.Scatter(x=list(range(len(values))), y=values, mode='markers', name=f'decay rate: {gamma}'),
                       row=i % 2 + 1, col=i // 2 + 1)
@@ -142,18 +143,17 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
     exp_lr = ExponentialLR(base_lr=eta, decay_rate=0.95)
     callback1, values1, weights1 = get_gd_state_recorder_callback()
     solver1 = GradientDescent(exp_lr, callback=callback1)
-    solver1.fit(L1(init), np.ndarray([]), np.ndarray([]))
-    print(weights1)
+    solver1.fit(L1(init), X=None, y=None)
     plot_descent_path(L1, np.concatenate(weights1, axis=0).reshape(len(weights1), len(init)),
                       f"Descent trajectory for L1, with eta = {eta}, decay rate = 0.95").show()
 
     exp_lr = ExponentialLR(base_lr=eta, decay_rate=0.95)
     callback2, values2, weights2 = get_gd_state_recorder_callback()
     solver2 = GradientDescent(exp_lr, callback=callback2)
-    solver2.fit(L2(init), np.ndarray([]), np.ndarray([]))
-    print(weights2)
+    solver2.fit(L2(init), X=None, y=None)
     plot_descent_path(L2, np.concatenate(weights2, axis=0).reshape(len(weights2), len(init)),
                       f"Descent trajectory for L1, with eta = {eta}, decay rate = 0.95").show()
+
 
 def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8) -> \
         Tuple[pd.DataFrame, pd.Series, pd.DataFrame, pd.Series]:
@@ -187,21 +187,53 @@ def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8)
     return split_train_test(df.drop(['chd', 'row.names'], axis=1), df.chd, train_portion)
 
 
-
 def fit_logistic_regression():
     # Load and split SA Heard Disease dataset
     X_train, y_train, X_test, y_test = load_data()
+    X_train, y_train, X_test, y_test = X_train.to_numpy(), y_train.to_numpy(), X_test.to_numpy(), y_test.to_numpy()
 
     # Plotting convergence rate of logistic regression over SA heart disease data
-    raise NotImplementedError()
+    model = LogisticRegression()
+    model.fit(X=X_train, y=y_train)
+    y_prob = model.predict_proba(X_test)
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_test, y_prob)
+
+    go.Figure(
+        data=[go.Scatter(x=[0, 1], y=[0, 1], mode="lines", line=dict(color="black", dash='dash'),
+                         name="Random Class Assignment"),
+              go.Scatter(x=fpr, y=tpr, mode='markers+lines', text=thresholds, name="", showlegend=False, marker_size=5,
+                         hovertemplate="<b>Threshold:</b>%{text:.3f}<br>FPR: %{x:.3f}<br>TPR: %{y:.3f}")],
+        layout=go.Layout(title=rf"$\text{{ROC Curve Of Fitted Model - AUC}}={auc(fpr, tpr):.6f}$",
+                         xaxis=dict(title=r"$\text{False Positive Rate (FPR)}$"),
+                         yaxis=dict(title=r"$\text{True Positive Rate (TPR)}$"))).show()
+
+    best_alpha = thresholds[np.argmax(tpr - fpr)]
+
+    best_model = LogisticRegression(alpha=best_alpha)
+    best_model.fit(X_train, y_train)
+    test_err = best_model.loss(X_test, y_test)
+    print(f'Test error of model with threshold = {best_alpha} is {test_err}')
 
     # Fitting l1- and l2-regularized logistic regression models, using cross-validation to specify values
     # of regularization parameter
-    raise NotImplementedError()
+    for norm in ['l1', 'l2']:
+        min_validate_err = 1
+        best_lam = 0
+        for lam in np.linspace(0, 1, 10):
+
+            train_score, validation_score = \
+                cross_validate(LogisticRegression(penalty=norm, lam=lam), X_train, y_train, misclassification_error)
+            if validation_score < min_validate_err:
+                min_validate_err = validation_score
+                best_lam = lam
+
+        model_test_err = LogisticRegression(penalty=norm, lam=best_lam).fit(X_train, y_train).loss(X_test, y_test)
+
+        print(f'for {norm} model - value of selected lambda is: {best_lam}, and model test error is {model_test_err}')
 
 
 if __name__ == '__main__':
     np.random.seed(0)
-    #    compare_fixed_learning_rates()
+    compare_fixed_learning_rates()
     compare_exponential_decay_rates()
     fit_logistic_regression()
