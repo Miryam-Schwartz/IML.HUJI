@@ -98,7 +98,7 @@ def compare_fixed_learning_rates(init: np.ndarray = np.array([np.sqrt(2), np.e /
         fixed_lr = FixedLR(eta)
         callback1, values1, weights1 = get_gd_state_recorder_callback()
         solver1 = GradientDescent(fixed_lr, callback=callback1)
-        solver1.fit(L1(init), np.ndarray([]), np.ndarray([]))
+        solver1.fit(L1(init), X=None, y=None)
         plot_descent_path(L1, np.concatenate(weights1, axis=0).reshape(len(weights1), len(init)),
                           f"Descent trajectory, L1, eta = {eta}").show()
 
@@ -152,7 +152,7 @@ def compare_exponential_decay_rates(init: np.ndarray = np.array([np.sqrt(2), np.
     solver2 = GradientDescent(exp_lr, callback=callback2)
     solver2.fit(L2(init), X=None, y=None)
     plot_descent_path(L2, np.concatenate(weights2, axis=0).reshape(len(weights2), len(init)),
-                      f"Descent trajectory for L1, with eta = {eta}, decay rate = 0.95").show()
+                      f"Descent trajectory for L2, with eta = {eta}, decay rate = 0.95").show()
 
 
 def load_data(path: str = "../datasets/SAheart.data", train_portion: float = .8) -> \
@@ -219,7 +219,7 @@ def fit_logistic_regression():
     for norm in ['l1', 'l2']:
         min_validate_err = 1
         best_lam = 0
-        for lam in np.linspace(0, 1, 10):
+        for lam in [0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1]:
 
             train_score, validation_score = \
                 cross_validate(LogisticRegression(penalty=norm, lam=lam), X_train, y_train, misclassification_error)
@@ -234,6 +234,6 @@ def fit_logistic_regression():
 
 if __name__ == '__main__':
     np.random.seed(0)
-    compare_fixed_learning_rates()
-    compare_exponential_decay_rates()
+    # compare_fixed_learning_rates()
+    # compare_exponential_decay_rates()
     fit_logistic_regression()
